@@ -187,6 +187,15 @@ if st.session_state.step == 1:
 # =====================
 elif st.session_state.step == 2:
     st.subheader("Étape 2/3 — Détails")
+#regle le bug de la quarantaine qui reset quand on remplie la zone de quarantaine
+    st.radio(
+    "Mise en quarantaine ?",
+    ["Oui", "Non"],
+    key="mise_en_quarantaine",
+    horizontal=True,
+    disabled=True
+)
+
 
     if st.session_state.mise_en_quarantaine == "Oui":
         st.markdown("### 🏥 Zone de quarantaine")

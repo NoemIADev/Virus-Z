@@ -9,7 +9,7 @@ with st.form("add_infection"):
     
     mode_propagation = st.selectbox(
         "Mode de propagation",
-        ["Morsure", "Contact", "Aérien", "Inconnu"]
+        ["Morsure", "Sang", "mutation genetique", "Inconnu"]
     )
 
     incubation_min = st.number_input(
