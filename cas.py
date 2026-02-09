@@ -7,8 +7,8 @@ st.title("🧟 Ajouter un cas (Virus Z)")
 # =====================
 # CONFIG (à adapter)
 # =====================
-DRY_RUN = True
-# CASE_API = "http://localhost:8000"  # décommente si besoin
+DRY_RUN = False  # True = pas d'appel API, juste construction du payload et affichage
+CAS_API = "http://localhost:8000"  # decomente/commente si besoin
 
 # =====================
 # STATE
@@ -43,7 +43,8 @@ def init_state():
     }
     for k, v in defaults.items():
         if k not in st.session_state:
-            st.session_state[k] = v
+
+            st.session_state.setdefault(k, v)
 
 
 def go(step: int):
@@ -141,10 +142,10 @@ def build_payload():
     return payload
 
 
-# def post_case(payload: dict):
-#     r = requests.post(f"{CASE_API}/cases", json=payload, timeout=10)
-#     r.raise_for_status()
-#     return r.json()
+def post_cases(payload: dict):
+    r = requests.post(f"{CAS_API}/cases", json=payload, timeout=10)
+    r.raise_for_status()
+    return r.json()
 
 
 # =====================
@@ -159,28 +160,47 @@ st.progress({1: 0.33, 2: 0.66, 3: 1.0}[st.session_state.step])
 if st.session_state.step == 1:
     st.subheader("Étape 1/3 — Infos générales")
 
-    st.text_input("Nom *", key="nom")
-    st.text_input("Prénom *", key="prenom")
-    st.number_input("Age", min_value=0, key="age")
+    with st.form("step1_form", clear_on_submit=False):
+        nom = st.text_input("Nom *", value=st.session_state.nom)
+        prenom = st.text_input("Prénom *", value=st.session_state.prenom)
+        age = st.number_input("Age", min_value=0, value=int(st.session_state.age))
 
-    st.selectbox("Sexe", ["Masculin", "Féminin", "Autre", "Inconnu"], key="sexe")
-    st.date_input("Date d'infection estimée", key="infection_date")
-    st.text_input("Virus contracté *", key="virus_contracted")
+        sexe = st.selectbox("Sexe", ["Masculin", "Féminin", "Autre", "Inconnu"],
+                            index=["Masculin","Féminin","Autre","Inconnu"].index(st.session_state.sexe))
+        infection_date = st.date_input("Date d'infection estimée", value=st.session_state.infection_date)
+        virus_contracted = st.text_input("Virus contracté *", value=st.session_state.virus_contracted)
 
-    st.radio(
-        "Mise en quarantaine ?",
-        ["Oui", "Non"],
-        key="mise_en_quarantaine",
-        horizontal=True,
-        on_change=on_change_quarantaine
-    )
+        mise_en_quarantaine = st.radio(
+            "Mise en quarantaine ?",
+            ["Oui", "Non"],
+            index=0 if st.session_state.mise_en_quarantaine == "Oui" else 1,
+            horizontal=True
+        )
 
-    errors = validate_step1()
-    for e in errors:
-        st.error(e)
+        submit = st.form_submit_button("➡️ Suivant")
 
-    if st.button("➡️ Suivant", disabled=bool(errors)):
-        go(2)
+    # commit au submit
+    if submit:
+        st.session_state.nom = nom
+        st.session_state.prenom = prenom
+        st.session_state.age = age
+        st.session_state.sexe = sexe
+        st.session_state.infection_date = infection_date
+        st.session_state.virus_contracted = virus_contracted
+
+        # si changement quarantaine -> reset branche opposée
+        if st.session_state.mise_en_quarantaine != mise_en_quarantaine:
+            st.session_state.mise_en_quarantaine = mise_en_quarantaine
+            on_change_quarantaine()
+        else:
+            st.session_state.mise_en_quarantaine = mise_en_quarantaine
+
+        errors = validate_step1()
+        if errors:
+            for e in errors:
+                st.error(e)
+        else:
+            go(2)
 
 # =====================
 # ETAPE 2
@@ -259,7 +279,7 @@ else:
                 st.success("✅ DRY RUN : prêt (pas d'appel API).")
             else:
                 try:
-                    created = post_case(payload)
+                    created = post_cases(payload)
                     st.success("✅ Cas enregistré !")
                     st.json(created)
                 except Exception as ex:

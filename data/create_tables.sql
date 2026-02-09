@@ -6,7 +6,7 @@ USE virus_z;
 
 -- Table simple pour le formulaire cas
 CREATE TABLE IF NOT EXISTS cas (
-  id INT AUTO_INCREMENT PRIMARY KEY,
+  id serial PRIMARY KEY,
   nom VARCHAR(100) NOT NULL,
   prenom VARCHAR(100) NOT NULL,
   age INT,
@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS cas (
 
 -- Table simple pour le formulaire virus
 CREATE TABLE IF NOT EXISTS virus (
-  id INT AUTO_INCREMENT PRIMARY KEY,
+  id serial PRIMARY KEY,
   nom VARCHAR(150) NOT NULL,
   variante VARCHAR(120),
   mode_propagation VARCHAR(50),
