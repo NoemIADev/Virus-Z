@@ -86,7 +86,7 @@ def create_case(case: CaseCreate):
 
     # 2) INSERT en DB
     sql = """
-        INSERT INTO public.cas (
+        INSERT INTO cas (
           nom, prenom, age, sexe, date_infection_estimee, virus_contracte, mise_en_quarantaine,
           quarantaine_zone, quarantaine_date_debut,
           domicile_inconnu, domicile_adresse, domicile_code_postal, domicile_ville,
@@ -130,8 +130,15 @@ def create_case(case: CaseCreate):
 
         cur.execute(sql, params)
 
+        # Si jamais une requête renvoie un resultset, on le consomme
+        try:
+            if cur.with_rows:
+                cur.fetchall()
+        except Exception:
+            pass
+
         conn.commit()
-        new_id = cur.lastrowid 
+        new_id = cur.lastrowid
 
         cur.close()
         conn.close()
@@ -139,7 +146,6 @@ def create_case(case: CaseCreate):
         return {"status": "ok", "id": new_id}
 
     except MySQLError as e:
-        # (optionnel) ferme proprement si ça plante au milieu
         try:
             cur.close()
         except Exception:
@@ -149,4 +155,4 @@ def create_case(case: CaseCreate):
         except Exception:
             pass
 
-        raise HTTPException(status_code=500, detail=f"DB error: {e}")
+        
