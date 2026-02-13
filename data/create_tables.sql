@@ -1,12 +1,10 @@
--- Schéma MySQL simple pour les formulaires cas et virus
+-- MariaDB / MySQL : schéma simple pour formulaires cas et virus
 
 CREATE DATABASE IF NOT EXISTS virus_z;
-
 USE virus_z;
 
--- Table simple pour le formulaire cas
 CREATE TABLE IF NOT EXISTS cas (
-  id serial PRIMARY KEY,
+  id INT AUTO_INCREMENT PRIMARY KEY,
   nom VARCHAR(100) NOT NULL,
   prenom VARCHAR(100) NOT NULL,
   age INT,
@@ -26,9 +24,8 @@ CREATE TABLE IF NOT EXISTS cas (
   travail_ville VARCHAR(120)
 );
 
--- Table simple pour le formulaire virus
 CREATE TABLE IF NOT EXISTS virus (
-  id serial PRIMARY KEY,
+  id INT AUTO_INCREMENT PRIMARY KEY,
   nom VARCHAR(150) NOT NULL,
   variante VARCHAR(120),
   mode_propagation VARCHAR(50),
@@ -38,3 +35,4 @@ CREATE TABLE IF NOT EXISTS virus (
   moyens_detection JSON,
   commentaire TEXT
 );
+

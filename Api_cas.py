@@ -3,7 +3,8 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import date
 
-import psycopg
+import mysql.connector
+from mysql.connector import Error as MySQLError
 from DB import get_conn
 
 
@@ -124,15 +125,28 @@ def create_case(case: CaseCreate):
     }
 
     try:
-        with get_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(sql, params)
-                new_id = cur.fetchone()[0]
-                conn.commit()
+        conn = get_conn()
+        cur = conn.cursor()
+
+        cur.execute(sql, params)
+
+        conn.commit()
+        new_id = cur.lastrowid  # ✅ MariaDB/MySQL
+
+        cur.close()
+        conn.close()
 
         return {"status": "ok", "id": new_id}
 
-    except psycopg.Error as e:
-        # détail DB utile pendant dev
-        raise HTTPException(status_code=500, detail=f"DB error: {e}")
+    except MySQLError as e:
+        # (optionnel) ferme proprement si ça plante au milieu
+        try:
+            cur.close()
+        except Exception:
+            pass
+        try:
+            conn.close()
+        except Exception:
+            pass
 
+        raise HTTPException(status_code=500, detail=f"DB error: {e}")
