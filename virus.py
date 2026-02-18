@@ -65,4 +65,16 @@ if submitted:
         }
 
         # appel API ici
-        st.success("Infection enregistrée avec succès 🧟‍♂️")
+    try:
+        response = requests.post(
+        "http://127.0.0.1:8000/virus",
+        json=payload
+        )
+
+        if response.status_code == 200:
+            st.success("Infection enregistrée avec succès 🧟‍♂️")
+        else:
+            st.error(f"Erreur API : {response.text}")
+
+    except Exception as e:
+        st.error(f"Erreur de connexion à l'API : {e}")

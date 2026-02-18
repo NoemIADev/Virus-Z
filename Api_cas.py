@@ -2,8 +2,6 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 from datetime import date
-
-import mysql.connector
 from mysql.connector import Error as MySQLError
 from DB import get_conn
 
@@ -49,7 +47,7 @@ class CaseCreate(BaseModel):
 
 @app.post("/cases")
 def create_case(case: CaseCreate):
-    # 1) depliér les données de la requete en variables simples pour faciliter l'INSERT en DB
+    # 1) Déplier les données de la requête en variables simples pour faciliter l'INSERT en DB
     quarantaine_zone = None
     quarantaine_date_debut = None
 
@@ -84,62 +82,66 @@ def create_case(case: CaseCreate):
         travail_ville = case.lieux.travail.ville
         # quarantaine reste NULL
 
-    # 2) INSERT en DB
-    sql = """
-        INSERT INTO public.cas (
-          nom, prenom, age, sexe, date_infection_estimee, virus_contracte, mise_en_quarantaine,
-          quarantaine_zone, quarantaine_date_debut,
-          domicile_inconnu, domicile_adresse, domicile_code_postal, domicile_ville,
-          travail_inconnu, travail_adresse, travail_code_postal, travail_ville
-        )
-        VALUES (
-          %(nom)s, %(prenom)s, %(age)s, %(sexe)s, %(date_infection_estimee)s, %(virus_contracte)s, %(mise_en_quarantaine)s,
-          %(quarantaine_zone)s, %(quarantaine_date_debut)s,
-          %(domicile_inconnu)s, %(domicile_adresse)s, %(domicile_code_postal)s, %(domicile_ville)s,
-          %(travail_inconnu)s, %(travail_adresse)s, %(travail_code_postal)s, %(travail_ville)s
-        )
-        RETURNING id;
-    """
-    print(sql)
-    params = {
-        "nom": case.nom,
-        "prenom": case.prenom,
-        "age": case.age,
-        "sexe": case.sexe,
-        "date_infection_estimee": case.date_infection_estimee,
-        "virus_contracte": case.virus_contracte,
-        "mise_en_quarantaine": case.mise_en_quarantaine,
-
-        "quarantaine_zone": quarantaine_zone,
-        "quarantaine_date_debut": quarantaine_date_debut,
-
-        "domicile_inconnu": domicile_inconnu,
-        "domicile_adresse": domicile_adresse,
-        "domicile_code_postal": domicile_code_postal,
-        "domicile_ville": domicile_ville,
-
-        "travail_inconnu": travail_inconnu,
-        "travail_adresse": travail_adresse,
-        "travail_code_postal": travail_code_postal,
-        "travail_ville": travail_ville,
-    }
-
+    # 2) INSERT en DB avec try/except correctement indenté
     try:
         conn = get_conn()
         cur = conn.cursor()
 
-        cur.execute(sql, params)
+        sql = """
+            INSERT INTO cas (
+              nom, prenom, age, sexe, date_infection_estimee, virus_contracte, mise_en_quarantaine,
+              quarantaine_zone, quarantaine_date_debut,
+              domicile_inconnu, domicile_adresse, domicile_code_postal, domicile_ville,
+              travail_inconnu, travail_adresse, travail_code_postal, travail_ville
+            )
+            VALUES (
+              %(nom)s, %(prenom)s, %(age)s, %(sexe)s, %(date_infection_estimee)s, %(virus_contracte)s, %(mise_en_quarantaine)s,
+              %(quarantaine_zone)s, %(quarantaine_date_debut)s,
+              %(domicile_inconnu)s, %(domicile_adresse)s, %(domicile_code_postal)s, %(domicile_ville)s,
+              %(travail_inconnu)s, %(travail_adresse)s, %(travail_code_postal)s, %(travail_ville)s
+            )
+        """
 
+        params = {
+            "nom": case.nom,
+            "prenom": case.prenom,
+            "age": case.age,
+            "sexe": case.sexe,
+            "date_infection_estimee": case.date_infection_estimee,
+            "virus_contracte": case.virus_contracte,
+            "mise_en_quarantaine": case.mise_en_quarantaine,
+
+            "quarantaine_zone": quarantaine_zone,
+            "quarantaine_date_debut": quarantaine_date_debut,
+
+            "domicile_inconnu": domicile_inconnu,
+            "domicile_adresse": domicile_adresse,
+            "domicile_code_postal": domicile_code_postal,
+            "domicile_ville": domicile_ville,
+
+            "travail_inconnu": travail_inconnu,
+            "travail_adresse": travail_adresse,
+            "travail_code_postal": travail_code_postal,
+            "travail_ville": travail_ville,
+        }
+
+        cur.execute(sql, params)
         conn.commit()
-        new_id = cur.lastrowid 
+        new_id = cur.lastrowid
 
         cur.close()
         conn.close()
 
-        return {"status": "ok", "id": new_id}
+        # Retour JSON clair
+        return {
+            "status": "ok",
+            "id": new_id,
+            "nom": case.nom,
+            "prenom": case.prenom,
+            "mise_en_quarantaine": case.mise_en_quarantaine
+        }
 
     except MySQLError as e:
-        # (optionnel) ferme proprement si ça plante au milieu
         try:
             cur.close()
         except Exception:
@@ -149,4 +151,3 @@ def create_case(case: CaseCreate):
         except Exception:
             pass
 
-        raise HTTPException(status_code=500, detail=f"DB error: {e}")
