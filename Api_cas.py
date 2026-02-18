@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 from datetime import date
-
+import requests
 import mysql.connector
 from mysql.connector import Error as MySQLError
 from DB import get_conn
