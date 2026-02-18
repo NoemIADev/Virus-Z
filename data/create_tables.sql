@@ -21,9 +21,10 @@ CREATE TABLE virus (
   incubation_min INT,
   incubation_max INT,
   contagiosite VARCHAR(50),
-  moyens_detection VARCHAR(255),
+  moyens_detection int,
   commentaire TEXT,
   PRIMARY KEY (id)
+  UNIQUE KEY uq_virus_nom_variante (nom, variante) 'combinaison unique de virus variant pour eviter les doublon'
 ) ENGINE=InnoDB;
 
 -- ======================
