@@ -1,5 +1,5 @@
 import requests
-from alertebdd import get_last_state, update_state, get_subscribers
+from alertedb import get_last_state, update_state, get_all_subscribers
 from mailer import send_mail
 
 ORANGE_SEUIL = 10
@@ -7,11 +7,10 @@ ROUGE_SEUIL = 20
 FASTAPI_URL = "http://localhost:8000/cases/count"  # ton API FastAPI
 
 def check_and_send_alert():
-    """Vérifie le nombre de cas et envoie des mails si l'état change"""
     try:
         response = requests.get(FASTAPI_URL)
         response.raise_for_status()
-        count = response.json().get("count", 0)
+        count = response.json().get("count", 0)  # <- c’est le count réel de la table cas
     except Exception as e:
         print("Erreur API FastAPI:", e)
         return
@@ -31,7 +30,7 @@ def check_and_send_alert():
         update_state(count, new_state)
 
         # Envoyer un mail à tous les abonnés
-        subscribers = get_subscribers()
-        for email in subscribers:
+        subscribers = get_all_subscribers()
+        if subscribers:
             message = f"⚠️ État du virus : {new_state}\nNombre de cas : {count}"
-            send_mail(message, email)
+            send_mail(message, subscribers)
