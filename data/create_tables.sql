@@ -23,8 +23,8 @@ CREATE TABLE virus (
   contagiosite int,
   moyens_detection VARCHAR(120),
   commentaire TEXT,
-  PRIMARY KEY (id)
-  UNIQUE KEY uq_virus_nom_variante (nom, variante) 'combinaison unique de virus variant pour eviter les doublon'
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_virus_nom_variante (nom, variante) 
 ) ENGINE=InnoDB;
 
 -- ======================

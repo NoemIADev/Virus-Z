@@ -35,12 +35,12 @@ def list_cases_for_map():
         FROM cas c
         JOIN virus v ON c.virus_id = v.id
         JOIN adresse da ON c.domicile_adresse_id = da.id
-        WHERE da.latitude IS NOT NULL
-        AND da.longitude IS NOT NULL
+        WHERE da.latitude IS NOT NULL AND da.longitude IS NOT NULL
     """
 
     rows = fetch_cases(sql)
-
+    if not rows:
+        return []
     # Générer une couleur unique par virus
     virus_colors = {}
     def random_color():
@@ -102,3 +102,4 @@ def list_cases_full():
     """
 
     return fetch_cases(sql)
+
