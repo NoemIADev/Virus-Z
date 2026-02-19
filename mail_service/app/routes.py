@@ -1,10 +1,9 @@
 from flask import request, jsonify
-from service import envoyer_alerte
+from service import check_and_send_alert
 
 def register_routes(app):
 
     @app.route("/alerte", methods=["POST"])
     def alerte():
-        data = request.json
-        envoyer_alerte(data)
+        check_and_send_alert()
         return jsonify({"status": "ok"})

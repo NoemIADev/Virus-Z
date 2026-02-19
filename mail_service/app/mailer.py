@@ -1,12 +1,20 @@
 
-
-
 from azure.communication.email import EmailClient
 import traceback
 import os
+import os
+from dotenv import load_dotenv
+from azure.communication.email import EmailClient
+
+load_dotenv()  # ← IMPORTANT
+
 connection_string = os.getenv("AZURE_EMAIL_CONNECTION_STRING")
 
+if not connection_string:
+    raise ValueError("AZURE_EMAIL_CONNECTION_STRING non définie")
+
 client = EmailClient.from_connection_string(connection_string)
+
 
 def send_mail(messageAlerte, emails):
     try:

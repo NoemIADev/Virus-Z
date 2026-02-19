@@ -1,7 +1,7 @@
 from flask import Flask
 from routes import register_routes
 from alertedb import init_db
-from alerte_service import check_and_send_alert
+from service import check_and_send_alert
 import threading
 import time
 
