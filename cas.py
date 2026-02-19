@@ -46,6 +46,19 @@ def init_state():
 
             st.session_state.setdefault(k, v)
 
+    # Normalise les anciennes valeurs possibles (bool/string) vers "Oui"/"Non"
+    st.session_state.mise_en_quarantaine = "Oui" if is_quarantaine_enabled() else "Non"
+
+
+def is_quarantaine_enabled() -> bool:
+    """Retourne True si la quarantaine est activée, quel que soit le format stocké."""
+    value = st.session_state.get("mise_en_quarantaine", "Non")
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"oui", "true", "1"}
+    return False
+
 
 def go(step: int):
     st.session_state.step = step
@@ -54,7 +67,7 @@ def go(step: int):
 
 def on_change_quarantaine():
     """Quand on change Oui/Non, on reset l'autre branche pour éviter incohérences."""
-    if st.session_state.mise_en_quarantaine == "Oui":
+    if is_quarantaine_enabled():
         # reset lieux
         st.session_state.domicile_inconnu = False
         st.session_state.domicile_adresse = ""
@@ -82,7 +95,7 @@ def validate_step1():
 
 def validate_step2():
     errors = []
-    if st.session_state.mise_en_quarantaine == "Oui":
+    if is_quarantaine_enabled():
         if not st.session_state.zone_quarantaine.strip():
             errors.append("La zone de quarantaine est obligatoire.")
     else:
@@ -107,6 +120,7 @@ def validate_step2():
 
 
 def build_payload():
+    quarantaine_active = is_quarantaine_enabled()
     payload = {
         "nom": st.session_state.nom.strip(),
         "prenom": st.session_state.prenom.strip(),
@@ -114,12 +128,12 @@ def build_payload():
         "sexe": st.session_state.sexe,
         "date_infection_estimee": str(st.session_state.infection_date),
         "virus_contracte": st.session_state.virus_contracted.strip(),
-        "mise_en_quarantaine": (st.session_state.mise_en_quarantaine == "Oui"),
+        "mise_en_quarantaine": quarantaine_active,
         "quarantaine": None,
         "lieux": None,
     }
 
-    if st.session_state.mise_en_quarantaine == "Oui":
+    if quarantaine_active:
         payload["quarantaine"] = {
             "zone": st.session_state.zone_quarantaine.strip(),
             "date_debut": str(st.session_state.date_debut_quarantaine),
@@ -207,17 +221,19 @@ if st.session_state.step == 1:
 # =====================
 elif st.session_state.step == 2:
     st.subheader("Étape 2/3 — Détails")
-#regle le bug de la quarantaine qui reset quand on remplie la zone de quarantaine
+
+    quarantaine_display = "Oui" if is_quarantaine_enabled() else "Non"
     st.radio(
-    "Mise en quarantaine ?",
-    ["Oui", "Non"],
-    key="mise_en_quarantaine",
-    horizontal=True,
-    disabled=True
-)
+        "Mise en quarantaine ?",
+        ["Oui", "Non"],
+        index=0 if quarantaine_display == "Oui" else 1,
+        key="mise_en_quarantaine_display",
+        horizontal=True,
+        disabled=True,
+    )
 
 
-    if st.session_state.mise_en_quarantaine == "Oui":
+    if is_quarantaine_enabled():
         st.markdown("### 🏥 Zone de quarantaine")
         st.text_input("Zone de mise en quarantaine *", key="zone_quarantaine")
         st.date_input("Début de la quarantaine", key="date_debut_quarantaine")
