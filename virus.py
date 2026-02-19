@@ -9,7 +9,7 @@ with st.form("add_infection"):
     
     mode_propagation = st.selectbox(
         "Mode de propagation",
-        ["Morsure", "Sang", "mutation genetique", "Inconnu"]
+        ["Morsure","Griffure","FluidesAérosols_clos","Spores_air", "Contact_surface","Aérien", "Mutation_secondaire"]
     )
 
     incubation_min = st.number_input(
@@ -20,7 +20,7 @@ with st.form("add_infection"):
     )
 
     contagiosite = st.radio(
-    "Contagiosité",
+          "Contagiosité",
     options=[0, 1, 2],
     format_func=lambda x: (
         "Non contagieux" if x == 0
@@ -28,10 +28,12 @@ with st.form("add_infection"):
         else "Fortement contagieux"
     )
     )
+  
+   
 
     moyens_detection = st.multiselect(
         "Moyens de détection",
-        ["Symptômes", "Test salivaire", "Scan", "Observation comportementale"]
+        ["Symptômes", "Test salivaire", "Scan", "Observation comportementale", "test adn", "PCR"]
     )
 
     commentaire = st.text_area("Commentaire")
@@ -39,6 +41,7 @@ with st.form("add_infection"):
     submitted = st.form_submit_button("Enregistrer")
 
 if submitted:
+
     errors = []
 
     if not nom:

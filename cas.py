@@ -4,47 +4,64 @@ import requests
 
 st.title("🧟 Ajouter un cas (Virus Z)")
 
+
+STATE_DEFAULTS = {
+    "step": 1,
+
+    # Etape 1
+    "nom": "",
+    "prenom": "",
+    "age": 30,
+    "sexe": "Masculin",
+    "infection_date": date.today(),
+    "virus_contracted": "",
+    "mise_en_quarantaine": "Non",  # "Oui" ou "Non"
+
+    # Etape 2 - quarantaine
+    "zone_quarantaine": "",
+    "date_debut_quarantaine": date.today(),
+
+    # Etape 2 - lieux
+    "domicile_inconnu": False,
+    "domicile_adresse": "",
+    "domicile_cp": "",
+    "domicile_ville": "",
+
+    "travail_inconnu": False,
+    "travail_adresse": "",
+    "travail_cp": "",
+    "travail_ville": "",
+}
+
 # =====================
 # CONFIG (à adapter)
 # =====================
-DRY_RUN = False # True = pas d'appel API, juste construction du payload et affichage
+DRY_RUN = True # True = pas d'appel API, juste construction du payload et affichage
 CAS_API = "http://localhost:8000"  # decomente/commente si besoin
 
 # =====================
 # STATE
 # =====================
 def init_state():
-    defaults = {
-        "step": 1,
-
-        # Etape 1
-        "nom": "",
-        "prenom": "",
-        "age": 30,
-        "sexe": "Masculin",
-        "infection_date": date.today(),
-        "virus_contracted": "",
-        "variant": "",
-        "mise_en_quarantaine": "Non",  # "Oui" ou "Non"
-
-        # Etape 2 - quarantaine
-        "zone_quarantaine": "",
-        "date_debut_quarantaine": date.today(),
-
-        # Etape 2 - lieux
-        "domicile_inconnu": False,
-        "domicile_adresse": "",
-        "domicile_cp": "",
-        "domicile_ville": "",
-
-        "travail_inconnu": False,
-        "travail_adresse": "",
-        "travail_cp": "",
-        "travail_ville": "",
-    }
-    for k, v in defaults.items(): #key and value
+    for k, v in STATE_DEFAULTS.items(): #key and value
         if k not in st.session_state:
             st.session_state.setdefault(k, v)
+
+    # Empêche Streamlit de "nettoyer" les champs d'étape 2 quand les widgets
+    # ne sont plus affichés (ex: passage en étape 3 puis clic Enregistrer).
+    for key in (
+        "zone_quarantaine",
+        "date_debut_quarantaine",
+        "domicile_inconnu",
+        "domicile_adresse",
+        "domicile_cp",
+        "domicile_ville",
+        "travail_inconnu",
+        "travail_adresse",
+        "travail_cp",
+        "travail_ville",
+    ):
+        st.session_state[key] = st.session_state.get(key, STATE_DEFAULTS[key])
 
     # Normalise les anciennes valeurs possibles (bool/string) vers "Oui"/"Non"
     st.session_state.mise_en_quarantaine = "Oui" if is_quarantaine_enabled() else "Non"
@@ -128,7 +145,6 @@ def build_payload():
         "sexe": st.session_state.sexe,
         "date_infection_estimee": str(st.session_state.infection_date),
         "virus_contracte": st.session_state.virus_contracted.strip(),
-        "variant": st.session_state.variant.strip() or None,
         "mise_en_quarantaine": quarantaine_active,
         "quarantaine": None,
         "lieux": None,
@@ -163,36 +179,10 @@ def post_cases(payload: dict):
     return r.json()
 
 
-def get_quarantine_zones():
-    """Récupère les zones de quarantaine depuis l'API."""
-    try:
-        r = requests.get(f"{CAS_API}/catalog/zones-quarantaine", timeout=10)
-        r.raise_for_status()
-        return r.json().get("zones", [])
-    except Exception:
-        return []
-
-
-def get_virus_catalog():
-    """Récupère les couples virus/variant depuis l'API."""
-    try:
-        r = requests.get(f"{CAS_API}/catalog/virus", timeout=10)
-        r.raise_for_status()
-        return r.json().get("virus", [])
-    except Exception:
-        return []
-
-
 # =====================
 # INIT
 # =====================
 init_state()
-
-# Listes dynamiques depuis la base via API
-zones_quarantaine = get_quarantine_zones()
-virus_catalog = get_virus_catalog()
-virus_labels = [item["label"] for item in virus_catalog]
-
 st.progress({1: 0.33, 2: 0.66, 3: 1.0}[st.session_state.step])
 
 # =====================
@@ -209,20 +199,7 @@ if st.session_state.step == 1:
         sexe = st.selectbox("Sexe", ["Masculin", "Féminin", "Autre", "Inconnu"],
                             index=["Masculin", "Féminin", "Autre", "Inconnu"].index(st.session_state.sexe))
         infection_date = st.date_input("Date d'infection estimée", value=st.session_state.infection_date)
-
-        selected_label = None
-        if st.session_state.virus_contracted:
-            for item in virus_catalog:
-                if item["nom"] == st.session_state.virus_contracted and (item["variante"] or "") == st.session_state.variant:
-                    selected_label = item["label"]
-                    break
-
-        if virus_labels:
-            index_virus = virus_labels.index(selected_label) if selected_label in virus_labels else 0
-            virus_choice = st.selectbox("Virus *", virus_labels, index=index_virus)
-        else:
-            st.warning("Aucun virus disponible pour le moment dans la base.")
-            virus_choice = ""
+        virus_contracted = st.text_input("Virus contracté *", value=st.session_state.virus_contracted)
 
         mise_en_quarantaine = st.radio(
             "Mise en quarantaine ?",
@@ -240,15 +217,7 @@ if st.session_state.step == 1:
         st.session_state.age = age
         st.session_state.sexe = sexe
         st.session_state.infection_date = infection_date
-        if virus_choice:
-            for item in virus_catalog:
-                if item["label"] == virus_choice:
-                    st.session_state.virus_contracted = item["nom"]
-                    st.session_state.variant = item["variante"] or ""
-                    break
-        else:
-            st.session_state.virus_contracted = ""
-            st.session_state.variant = ""
+        st.session_state.virus_contracted = virus_contracted
 
         # si changement quarantaine -> reset branche opposée
         if st.session_state.mise_en_quarantaine != mise_en_quarantaine:
@@ -282,13 +251,7 @@ elif st.session_state.step == 2:
 
     if is_quarantaine_enabled():
         st.markdown("### 🏥 Zone de quarantaine")
-        if zones_quarantaine:
-            index_zone = zones_quarantaine.index(st.session_state.zone_quarantaine) if st.session_state.zone_quarantaine in zones_quarantaine else 0
-            selected_zone = st.selectbox("Zone de mise en quarantaine *", zones_quarantaine, index=index_zone)
-            st.session_state.zone_quarantaine = selected_zone
-        else:
-            st.warning("Aucune zone de quarantaine disponible en base.")
-            st.session_state.zone_quarantaine = ""
+        st.text_input("Zone de mise en quarantaine *", key="zone_quarantaine")
         st.date_input("Début de la quarantaine", key="date_debut_quarantaine")
     else:
         st.markdown("### 🏠 Lieux fréquentés")

@@ -15,7 +15,7 @@ VALUES
  'Souche historique. Transformation rapide, agressivité modérée.'),
 
 ('Virus Z', 'RAGE',
- 'Morsure, fluides, aérosols en milieu clos',
+ 'Morsure, fluides,',
  2, 12, 2,
  'PCR, observation clinique',
  'Variant hyper-agressif : propagation rapide en milieu clos, attaques violentes et imprévisibles.'),
