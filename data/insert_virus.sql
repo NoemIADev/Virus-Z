@@ -56,19 +56,19 @@ INSERT INTO virus
 VALUES
 
 ('Virus_ZH', 'DELEGUE',
- 'Morsure, fluides (transmet Virus Z classique)',
+ 'Morsure, fluides',
  12, 72, 1,
  'Analyse comportementale, séquençage ADN',
  'Mutation évoluée du Virus Z. Conserve une conscience avancée et tente de commander les autres zombies. La transmission engendre un Virus Z standard.'),
 
 ('Virus_ZH', 'DUCHESSE',
- 'Morsure, fluides (transmet Virus Z classique)',
+ 'Morsure, fluides',
  18, 96, 1,
  'Analyse neurologique avancée',
  'Mutation rare du Virus Z. Conserve un contrôle quasi total et refuse de se soumettre aux pulsions primaires du virus. Transmission = Virus Z standard.'),
 
 ('Virus_ZH', 'DANIT',
- 'Morsure, fluides (transmet Virus Z classique)',
+ 'Morsure, fluides',
  14, 72, 1,
  'Analyse comportementale avancée',
  'Mutation stable et calme du Virus Z. Devient fortement défensif si provoqué ou attaqué et tend à protéger les autres infectés proches. Transmission = Virus Z standard.');

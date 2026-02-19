@@ -71,7 +71,7 @@ CREATE TABLE cas (
   lieu_quarantaine_id INT NULL,
   quarantaine_date_debut DATE,
 
-  domicile_adresse_id INT NOT NULL,
+  domicile_adresse_id INT NULL,
   travail_adresse_id INT NULL,
 
   PRIMARY KEY (id),

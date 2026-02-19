@@ -215,15 +215,34 @@ def validate_lieu_fields(lieu: Lieu, nom_lieu: str) -> None:
 # =====================
 # ROUTE
 # =====================
+
+@app.get("/cases/count")
+def get_cases_count():
+    conn = None
+    cur = None
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM cas")
+        count = cur.fetchone()[0]
+        return {"count": count}
+    except MySQLError as e:
+        raise HTTPException(status_code=500, detail=f"Erreur DB: {e}")
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
 @app.post("/cases")
 def create_case(case: CaseCreate):
     # Vérification de la structure reçue du front
     if case.mise_en_quarantaine:
         if not case.quarantaine:
-            raise HTTPException(status_code=422, detail="quarantaine est obligatoire si mise_en_quarantaine=true")
+            raise HTTPException(status_code=422, detail="quarantaine est obligatoire si mise_en_quarantaine coché")
     else:
         if not case.lieux:
-            raise HTTPException(status_code=422, detail="lieux est obligatoire si mise_en_quarantaine=false")
+            raise HTTPException(status_code=422, detail="lieux est obligatoire si pas de mise en quarentaine ou cocher inconue")
 
     conn = None
     cur = None
