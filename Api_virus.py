@@ -22,8 +22,10 @@ class MoyenDetection(str, Enum):
     observation_comportementale = "Observation comportementale"
 
 class ContagiositeLevel(IntEnum):
-    faible = 0
-    fort = 1
+    faible = 1
+    Noncontagieux = 0
+    Fort = 2
+
 
 class VirusCreate(BaseModel):
     nom: str
