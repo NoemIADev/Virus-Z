@@ -11,7 +11,7 @@ client = EmailClient.from_connection_string(connection_string)
 def send_mail(messageAlerte, emails):
     try:
         message = {
-            "senderAddress": "DoNotReply@xxxx.azurecomm.net",
+            "senderAddress": "DoNotReply@9eb8b9a9-fe7f-4e4f-8aa8-feca29eaace0.azurecomm.net",
             "recipients": {
                 "to": [{"address": email} for email in emails]
             },
