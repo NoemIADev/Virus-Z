@@ -21,8 +21,12 @@ with st.form("add_infection"):
 
     contagiosite = st.radio(
     "Contagiosité",
-    options=[0, 1],
-    format_func=lambda x: "Faible / non contagieux" if x == 0 else "Fortement contagieux"
+    options=[0, 1, 2],
+    format_func=lambda x: (
+        "Non contagieux" if x == 0
+        else "Faible" if x == 1
+        else "Fortement contagieux"
+    )
     )
 
     moyens_detection = st.multiselect(

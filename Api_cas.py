@@ -44,6 +44,7 @@ class CaseCreate(BaseModel):
     sexe: str
     date_infection_estimee: date
     virus_contracte: str
+    variant: Optional[str] = None
     mise_en_quarantaine: bool
     quarantaine: Optional[Quarantaine] = None
     lieux: Optional[Lieux] = None
@@ -63,7 +64,7 @@ def geocode_one(adresse: str, code_postal: str, ville: str) -> dict:
     params = {
         "q": q,
         "limit": 1,
-        "autocomplete": 0,    #autocomplete 1 = mode “suggestions” (par défaut) → bien pour taper vite 
+        "autocomplete": 0,    #autocomplete 1 = mode “suggestions” (par défaut) → bien pour taper vite
                               # 0 = recherche plus “stricte” (souvent mieux pour valider une adresse complète)
         "index": "address",
     }
@@ -108,13 +109,98 @@ def insert_adresse(cur, ligne1: str, code_postal: str, ville: str, latitude=None
     return cur.lastrowid
 
 
-def get_virus_id(cur, virus_contracte: str) -> int:
-    """Récupère l'id du virus par son nom."""
-    cur.execute("SELECT id FROM virus WHERE nom = %s LIMIT 1", (virus_contracte,))
-    row = cur.fetchone()
-    if not row:
+def get_virus_id(cur, virus_contracte: str, variant: Optional[str] = None) -> int:
+    """Récupère l'id du virus par son nom (+ variante si fournie)."""
+    if variant:
+        # Cas normal: nom + variante doit pointer vers une seule ligne.
+        cur.execute(
+            "SELECT id FROM virus WHERE nom = %s AND variante = %s",
+            (virus_contracte, variant),
+        )
+    else:
+        # Sans variante, on récupère toutes les lignes et on gère l'ambiguïté.
+        cur.execute("SELECT id FROM virus WHERE nom = %s", (virus_contracte,))
+
+    rows = cur.fetchall()
+    if not rows:
         raise HTTPException(status_code=422, detail="Virus introuvable")
-    return row[0]
+
+    if len(rows) > 1:
+        raise HTTPException(
+            status_code=422,
+            detail="Plusieurs variantes trouvées pour ce virus, merci de préciser la variante",
+        )
+
+    return rows[0][0]
+
+
+@app.get("/catalog/zones-quarantaine")
+def list_quarantine_zones():
+    """Retourne les zones de quarantaine déjà connues en base."""
+    conn = None
+    cur = None
+
+    try:
+        conn = get_conn()
+        cur = conn.cursor(dictionary=True)
+        cur.execute(
+            """
+            SELECT DISTINCT nom
+            FROM lieu_quarantaine
+            WHERE nom IS NOT NULL AND nom <> ''
+            ORDER BY nom
+            """
+        )
+        return {"zones": [row["nom"] for row in cur.fetchall()]}
+    except MySQLError as exc:
+        raise HTTPException(status_code=500, detail=f"Erreur base de données: {exc}") from exc
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+
+@app.get("/catalog/virus")
+def list_virus_catalog():
+    """Retourne les virus + variantes pour alimenter un select côté front."""
+    conn = None
+    cur = None
+
+    try:
+        conn = get_conn()
+        cur = conn.cursor(dictionary=True)
+        cur.execute(
+            """
+            SELECT id, nom, variante
+            FROM virus
+            ORDER BY nom, variante
+            """
+        )
+        rows = cur.fetchall()
+
+        virus = []
+        for row in rows:
+            nom = row["nom"]
+            variante = row["variante"]
+            label = f"{nom} - {variante}" if variante else nom
+            virus.append(
+                {
+                    "id": row["id"],
+                    "nom": nom,
+                    "variante": variante,
+                    "label": label,
+                }
+            )
+
+        return {"virus": virus}
+    except MySQLError as exc:
+        raise HTTPException(status_code=500, detail=f"Erreur base de données: {exc}") from exc
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
 
 
 def validate_lieu_fields(lieu: Lieu, nom_lieu: str) -> None:
@@ -146,7 +232,7 @@ def create_case(case: CaseCreate):
         conn = get_conn()
         cur = conn.cursor()
 
-        virus_id = get_virus_id(cur, case.virus_contracte)
+        virus_id = get_virus_id(cur, case.virus_contracte, case.variant)
 
         lieu_quarantaine_id = None
         quarantaine_date_debut = None
