@@ -10,6 +10,7 @@ st.title("🧟 Ajouter un cas (Virus Z)")
 DRY_RUN = False  # True = pas d'appel API, juste construction du payload et affichage
 CAS_API = "http://localhost:8000"  # decomente/commente si besoin
 
+
 # =====================
 # STATE
 # =====================
@@ -24,7 +25,7 @@ def init_state():
         "sexe": "Masculin",
         "infection_date": date.today(),
         "virus_contracted": "",
-        "mise_en_quarantaine": "Non",  # "Oui" ou "Non"
+        "mise_en_quarantaine": False,  # bool métier
 
         # Etape 2 - quarantaine
         "zone_quarantaine": "",
@@ -41,23 +42,13 @@ def init_state():
         "travail_cp": "",
         "travail_ville": "",
     }
+
     for k, v in defaults.items():
-        if k not in st.session_state:
+        st.session_state.setdefault(k, v)
 
-            st.session_state.setdefault(k, v)
-
-    # Normalise les anciennes valeurs possibles (bool/string) vers "Oui"/"Non"
-    st.session_state.mise_en_quarantaine = "Oui" if is_quarantaine_enabled() else "Non"
-
-
-def is_quarantaine_enabled() -> bool:
-    """Retourne True si la quarantaine est activée, quel que soit le format stocké."""
-    value = st.session_state.get("mise_en_quarantaine", "Non")
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        return value.strip().lower() in {"oui", "true", "1"}
-    return False
+    # Compatibilité avec anciennes sessions où la valeur pouvait être une string
+    if isinstance(st.session_state.mise_en_quarantaine, str):
+        st.session_state.mise_en_quarantaine = st.session_state.mise_en_quarantaine.strip().lower() == "oui"
 
 
 def go(step: int):
@@ -67,7 +58,7 @@ def go(step: int):
 
 def on_change_quarantaine():
     """Quand on change Oui/Non, on reset l'autre branche pour éviter incohérences."""
-    if is_quarantaine_enabled():
+    if st.session_state.mise_en_quarantaine:
         # reset lieux
         st.session_state.domicile_inconnu = False
         st.session_state.domicile_adresse = ""
@@ -95,7 +86,7 @@ def validate_step1():
 
 def validate_step2():
     errors = []
-    if is_quarantaine_enabled():
+    if st.session_state.mise_en_quarantaine:
         if not st.session_state.zone_quarantaine.strip():
             errors.append("La zone de quarantaine est obligatoire.")
     else:
@@ -120,7 +111,6 @@ def validate_step2():
 
 
 def build_payload():
-    quarantaine_active = is_quarantaine_enabled()
     payload = {
         "nom": st.session_state.nom.strip(),
         "prenom": st.session_state.prenom.strip(),
@@ -128,12 +118,12 @@ def build_payload():
         "sexe": st.session_state.sexe,
         "date_infection_estimee": str(st.session_state.infection_date),
         "virus_contracte": st.session_state.virus_contracted.strip(),
-        "mise_en_quarantaine": quarantaine_active,
+        "mise_en_quarantaine": bool(st.session_state.mise_en_quarantaine),
         "quarantaine": None,
         "lieux": None,
     }
 
-    if quarantaine_active:
+    if st.session_state.mise_en_quarantaine:
         payload["quarantaine"] = {
             "zone": st.session_state.zone_quarantaine.strip(),
             "date_debut": str(st.session_state.date_debut_quarantaine),
@@ -180,15 +170,15 @@ if st.session_state.step == 1:
         age = st.number_input("Age", min_value=0, value=int(st.session_state.age))
 
         sexe = st.selectbox("Sexe", ["Masculin", "Féminin", "Autre", "Inconnu"],
-                            index=["Masculin","Féminin","Autre","Inconnu"].index(st.session_state.sexe))
+                            index=["Masculin", "Féminin", "Autre", "Inconnu"].index(st.session_state.sexe))
         infection_date = st.date_input("Date d'infection estimée", value=st.session_state.infection_date)
         virus_contracted = st.text_input("Virus contracté *", value=st.session_state.virus_contracted)
 
-        mise_en_quarantaine = st.radio(
+        mise_en_quarantaine_ui = st.radio(
             "Mise en quarantaine ?",
             ["Oui", "Non"],
-            index=0 if st.session_state.mise_en_quarantaine == "Oui" else 1,
-            horizontal=True
+            index=0 if st.session_state.mise_en_quarantaine else 1,
+            horizontal=True,
         )
 
         submit = st.form_submit_button("➡️ Suivant")
@@ -202,12 +192,10 @@ if st.session_state.step == 1:
         st.session_state.infection_date = infection_date
         st.session_state.virus_contracted = virus_contracted
 
-        # si changement quarantaine -> reset branche opposée
-        if st.session_state.mise_en_quarantaine != mise_en_quarantaine:
-            st.session_state.mise_en_quarantaine = mise_en_quarantaine
+        new_quarantaine_value = mise_en_quarantaine_ui == "Oui"
+        if st.session_state.mise_en_quarantaine != new_quarantaine_value:
+            st.session_state.mise_en_quarantaine = new_quarantaine_value
             on_change_quarantaine()
-        else:
-            st.session_state.mise_en_quarantaine = mise_en_quarantaine
 
         errors = validate_step1()
         if errors:
@@ -222,18 +210,16 @@ if st.session_state.step == 1:
 elif st.session_state.step == 2:
     st.subheader("Étape 2/3 — Détails")
 
-    quarantaine_display = "Oui" if is_quarantaine_enabled() else "Non"
     st.radio(
         "Mise en quarantaine ?",
         ["Oui", "Non"],
-        index=0 if quarantaine_display == "Oui" else 1,
+        index=0 if st.session_state.mise_en_quarantaine else 1,
         key="mise_en_quarantaine_display",
         horizontal=True,
         disabled=True,
     )
 
-
-    if is_quarantaine_enabled():
+    if st.session_state.mise_en_quarantaine:
         st.markdown("### 🏥 Zone de quarantaine")
         st.text_input("Zone de mise en quarantaine *", key="zone_quarantaine")
         st.date_input("Début de la quarantaine", key="date_debut_quarantaine")
