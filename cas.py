@@ -28,7 +28,7 @@ def init_state():
         "mise_en_quarantaine": "Non",  # "Oui" ou "Non"
 
         # Etape 2 - quarantaine
-        "zone_quarantaine": "",
+        "zone_quarantaine": None,
         "date_debut_quarantaine": date.today(),
 
         # Etape 2 - lieux
@@ -80,8 +80,24 @@ def on_change_quarantaine():
         st.session_state.travail_ville = ""
     else:
         # reset quarantaine
-        st.session_state.zone_quarantaine = ""
+        st.session_state.zone_quarantaine = None
         st.session_state.date_debut_quarantaine = date.today()
+
+
+def persist_step2_snapshot():
+    """Snapshot non-widget de l'étape 2 pour survivre aux reruns de Streamlit."""
+    st.session_state["step2_snapshot"] = {
+        "zone_quarantaine": st.session_state.get("zone_quarantaine", ""),
+        "date_debut_quarantaine": st.session_state.get("date_debut_quarantaine", date.today()),
+        "domicile_inconnu": bool(st.session_state.get("domicile_inconnu", False)),
+        "domicile_adresse": st.session_state.get("domicile_adresse", ""),
+        "domicile_cp": st.session_state.get("domicile_cp", ""),
+        "domicile_ville": st.session_state.get("domicile_ville", ""),
+        "travail_inconnu": bool(st.session_state.get("travail_inconnu", False)),
+        "travail_adresse": st.session_state.get("travail_adresse", ""),
+        "travail_cp": st.session_state.get("travail_cp", ""),
+        "travail_ville": st.session_state.get("travail_ville", ""),
+    }
 
 
 def validate_step1():
@@ -121,6 +137,20 @@ def validate_step2():
 
 def build_payload():
     quarantaine_active = is_quarantaine_enabled()
+    step2 = st.session_state.get("step2_snapshot", {})
+
+    def get_step2_value(key: str, default):
+        return step2.get(key, st.session_state.get(key, default))
+
+    def clean_text(value):
+        if value is None:
+            return None
+        text = str(value).strip()
+        return text or None
+
+    domicile_inconnu = bool(get_step2_value("domicile_inconnu", False))
+    travail_inconnu = bool(get_step2_value("travail_inconnu", False))
+
     payload = {
         "nom": st.session_state.nom.strip(),
         "prenom": st.session_state.prenom.strip(),
@@ -136,22 +166,22 @@ def build_payload():
 
     if quarantaine_active:
         payload["quarantaine"] = {
-            "zone": st.session_state.zone_quarantaine.strip(),
-            "date_debut": str(st.session_state.date_debut_quarantaine),
+            "zone": clean_text(get_step2_value("zone_quarantaine", "")),
+            "date_debut": str(get_step2_value("date_debut_quarantaine", date.today())),
         }
     else:
         payload["lieux"] = {
             "domicile": {
-                "inconnu": bool(st.session_state.domicile_inconnu),
-                "adresse": None if st.session_state.domicile_inconnu else st.session_state.domicile_adresse.strip(),
-                "code_postal": None if st.session_state.domicile_inconnu else st.session_state.domicile_cp.strip(),
-                "ville": None if st.session_state.domicile_inconnu else st.session_state.domicile_ville.strip(),
+                "inconnu": domicile_inconnu,
+                "adresse": None if domicile_inconnu else clean_text(get_step2_value("domicile_adresse", "")),
+                "code_postal": None if domicile_inconnu else clean_text(get_step2_value("domicile_cp", "")),
+                "ville": None if domicile_inconnu else clean_text(get_step2_value("domicile_ville", "")),
             },
             "travail": {
-                "inconnu": bool(st.session_state.travail_inconnu),
-                "adresse": None if st.session_state.travail_inconnu else st.session_state.travail_adresse.strip(),
-                "code_postal": None if st.session_state.travail_inconnu else st.session_state.travail_cp.strip(),
-                "ville": None if st.session_state.travail_inconnu else st.session_state.travail_ville.strip(),
+                "inconnu": travail_inconnu,
+                "adresse": None if travail_inconnu else clean_text(get_step2_value("travail_adresse", "")),
+                "code_postal": None if travail_inconnu else clean_text(get_step2_value("travail_cp", "")),
+                "ville": None if travail_inconnu else clean_text(get_step2_value("travail_ville", "")),
             },
         }
     return payload
@@ -159,7 +189,12 @@ def build_payload():
 
 def post_cases(payload: dict):
     r = requests.post(f"{CAS_API}/cases", json=payload, timeout=10)
-    r.raise_for_status()
+    if not r.ok:
+        try:
+            error_detail = r.json()
+        except ValueError:
+            error_detail = r.text
+        raise RuntimeError(f"Erreur API ({r.status_code}) : {error_detail}")
     return r.json()
 
 
@@ -326,6 +361,8 @@ elif st.session_state.step == 2:
             go(1)
     with col2:
         if st.button("➡️ Suivant", disabled=bool(errors)):
+            # On fige l'état étape 2 ici pour que l'étape 3 survive aux reruns.
+            persist_step2_snapshot()
             go(3)
 
 # =====================

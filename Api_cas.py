@@ -21,7 +21,7 @@ UNKNOWN_CITY = "Inconnue"
 # MODELS (schemas)
 # =====================
 class Quarantaine(BaseModel):
-    zone: str
+    zone_id: int
     date_debut: date
 
 
@@ -145,13 +145,15 @@ def list_quarantine_zones():
         cur = conn.cursor(dictionary=True)
         cur.execute(
             """
-            SELECT DISTINCT nom
+            SELECT id, nom
             FROM lieu_quarantaine
-            WHERE nom IS NOT NULL AND nom <> ''
+            WHERE type = 'ZONE'
+              AND nom IS NOT NULL
+              AND nom <> ''
             ORDER BY nom
             """
         )
-        return {"zones": [row["nom"] for row in cur.fetchall()]}
+        return {"zones": cur.fetchall()}
     except MySQLError as exc:
         raise HTTPException(status_code=500, detail=f"Erreur base de données: {exc}") from exc
     finally:
@@ -260,25 +262,23 @@ def create_case(case: CaseCreate):
 
         if case.mise_en_quarantaine:
             # Branche quarantaine
-            zone = case.quarantaine.zone.strip()
+            zone_id = case.quarantaine.zone_id
             quarantaine_date_debut = case.quarantaine.date_debut
 
-            # La table lieu_quarantaine exige une FK adresse_id.
-            zone_adresse_id = insert_adresse(
-                cur,
-                ligne1=f"Zone quarantaine: {zone}",
-                code_postal=UNKNOWN_CP,
-                ville=UNKNOWN_CITY,
-            )
-
+            # Une zone de quarantaine doit déjà exister : on vérifie l'id.
             cur.execute(
                 """
-                INSERT INTO lieu_quarantaine (nom, type, adresse_id)
-                VALUES (%s, %s, %s)
+                SELECT id
+                FROM lieu_quarantaine
+                WHERE id = %s AND type = 'ZONE'
                 """,
-                (zone, "ZONE", zone_adresse_id),
+                (zone_id,),
             )
-            lieu_quarantaine_id = cur.lastrowid
+            zone_row = cur.fetchone()
+            if not zone_row:
+                raise HTTPException(status_code=400, detail="Zone de quarantaine invalide")
+
+            lieu_quarantaine_id = zone_id
 
             # La table cas impose domicile_adresse_id NOT NULL.
             domicile_adresse_id = insert_adresse(
