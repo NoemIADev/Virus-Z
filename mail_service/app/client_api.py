@@ -8,6 +8,6 @@
 import requests
 
 def get_cases_count():
-    response = requests.get("http://fastapi_service:8000/cases/count")
+    response = requests.get("http://127.0.0.1:8000/cases/count")
     return response.json()["count"]
 

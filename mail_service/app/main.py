@@ -13,7 +13,7 @@ register_routes(app)
 def alert_scheduler():
     while True:
         check_and_send_alert()
-        time.sleep(600)  # toutes les 10 minutes
+        time.sleep(60)  # toutes les 10 minutes
 
 threading.Thread(target=alert_scheduler, daemon=True).start()
 

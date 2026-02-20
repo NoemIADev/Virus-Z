@@ -4,7 +4,9 @@ from mailer import send_mail
 
 ORANGE_SEUIL = 10
 ROUGE_SEUIL = 20
-FASTAPI_URL = "http://localhost:8000/cases/count"  # ton API FastAPI
+
+
+FASTAPI_URL = "http://127.0.0.1:8000/cases/count"  # ton API FastAPI
 
 def check_and_send_alert():
     try:
