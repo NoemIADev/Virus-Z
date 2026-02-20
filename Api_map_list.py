@@ -24,12 +24,10 @@ def fetch_cases(sql: str, params: dict = None):
 
 @app.get("/cases/map")
 def list_cases_for_map():
-
     sql = """
         SELECT 
-            v.id AS virus_id,
-            v.nom AS virus_nom,
-            v.contagiosite,
+            c.id AS id,
+            v.nom AS virus,
             da.latitude,
             da.longitude
         FROM cas c
@@ -38,28 +36,40 @@ def list_cases_for_map():
         WHERE da.latitude IS NOT NULL AND da.longitude IS NOT NULL
     """
 
-    rows = fetch_cases(sql)
-    if not rows:
-        return []
-    # Générer une couleur unique par virus
-    virus_colors = {}
-    def random_color():
-        return "#" + "".join([random.choice("0123456789ABCDEF") for _ in range(6)])
+    try:
+        rows = fetch_cases(sql)
+        if not rows:
+            return []
 
-    for row in rows:
-        virus_colors.setdefault(row["virus_nom"], random_color())
+        virus_colors = {}
+        def random_color():
+            return "#" + "".join([random.choice("0123456789ABCDEF") for _ in range(6)])
 
-    map_data = []
-    for row in rows:
-        map_data.append({
-            "virus": row["virus_nom"],
-            "contagiosite": row["contagiosite"],
-            "lat": float(row["latitude"]),
-            "lon": float(row["longitude"]),
-            "color": virus_colors[row["virus_nom"]]
-        })
+        map_data = []
+        for row in rows:
+            virus_colors.setdefault(row["virus"], random_color())
 
-    return map_data
+            # ⚠️ Conversion en float sécurisée
+            try:
+                lat = float(row["latitude"])
+                lon = float(row["longitude"])
+            except (TypeError, ValueError) as e:
+                raise HTTPException(status_code=500, detail=f"Erreur coordonnées pour cas {row['id']}: {e}")
+
+            map_data.append({
+                "id": row["id"],
+                "virus": row["virus"],
+                "lat": lat,
+                "lon": lon,
+                "color": virus_colors[row["virus"]]
+            })
+
+        return map_data
+
+    except MySQLError as e:
+        raise HTTPException(status_code=500, detail=f"Erreur BDD: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur API: {e}")
 
 @app.get("/cases/full")
 def list_cases_full():
@@ -102,4 +112,3 @@ def list_cases_full():
     """
 
     return fetch_cases(sql)
-
