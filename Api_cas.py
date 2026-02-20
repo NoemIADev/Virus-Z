@@ -92,6 +92,9 @@ def geocode_one(adresse: str, code_postal: str, ville: str) -> dict:
 
     return {
         "label": properties.get("label", q),
+        "ligne1": properties.get("name", adresse),
+        "code_postal": properties.get("postcode", code_postal),
+        "ville": properties.get("city", ville),
         "longitude": coordinates[0],
         "latitude": coordinates[1],
     }
@@ -308,9 +311,9 @@ def create_case(case: CaseCreate):
                 geo_domicile = geocode_one(domicile.adresse, domicile.code_postal, domicile.ville)
                 domicile_adresse_id = insert_adresse(
                     cur,
-                    ligne1=geo_domicile["label"],
-                    code_postal=domicile.code_postal,
-                    ville=domicile.ville,
+                    ligne1=geo_domicile["ligne1"],
+                    code_postal=geo_domicile["code_postal"],
+                    ville=geo_domicile["ville"],
                     latitude=Decimal(str(geo_domicile["latitude"])),
                     longitude=Decimal(str(geo_domicile["longitude"])),
                 )
@@ -320,9 +323,9 @@ def create_case(case: CaseCreate):
                 geo_travail = geocode_one(travail.adresse, travail.code_postal, travail.ville)
                 travail_adresse_id = insert_adresse(
                     cur,
-                    ligne1=geo_travail["label"],
-                    code_postal=travail.code_postal,
-                    ville=travail.ville,
+                    ligne1=geo_travail["ligne1"],
+                    code_postal=geo_travail["code_postal"],
+                    ville=geo_travail["ville"],
                     latitude=Decimal(str(geo_travail["latitude"])),
                     longitude=Decimal(str(geo_travail["longitude"])),
                 )

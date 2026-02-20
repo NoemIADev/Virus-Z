@@ -41,6 +41,10 @@ def init_state():
         "travail_adresse": "",
         "travail_cp": "",
         "travail_ville": "",
+
+        # Etape 3 - statut enregistrement
+        "save_success": False,
+        "last_created_case": None,
     }
     for k, v in defaults.items(): #key and value
         if k not in st.session_state:
@@ -62,6 +66,38 @@ def is_quarantaine_enabled() -> bool:
 
 def go(step: int):
     st.session_state.step = step
+    st.rerun()
+
+
+def reset_case_form():
+    """Réinitialise le formulaire complet pour saisir un nouveau cas."""
+    st.session_state.step = 1
+
+    st.session_state.nom = ""
+    st.session_state.prenom = ""
+    st.session_state.age = 30
+    st.session_state.sexe = "Masculin"
+    st.session_state.infection_date = date.today()
+    st.session_state.virus_contracted = ""
+    st.session_state.variant = ""
+    st.session_state.mise_en_quarantaine = "Non"
+
+    st.session_state.zone_quarantaine = None
+    st.session_state.date_debut_quarantaine = date.today()
+
+    st.session_state.domicile_inconnu = False
+    st.session_state.domicile_adresse = ""
+    st.session_state.domicile_cp = ""
+    st.session_state.domicile_ville = ""
+
+    st.session_state.travail_inconnu = False
+    st.session_state.travail_adresse = ""
+    st.session_state.travail_cp = ""
+    st.session_state.travail_ville = ""
+
+    st.session_state.save_success = False
+    st.session_state.last_created_case = None
+    st.session_state.pop("step2_snapshot", None)
     st.rerun()
 
 
@@ -375,18 +411,29 @@ else:
     st.markdown("### 📦 Payload")
     st.json(payload)
 
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("⬅️ Modifier"):
-            go(2)
-    with col2:
-        if st.button("🚨 Enregistrer"):
-            if DRY_RUN:
-                st.success("✅ DRY RUN : prêt (pas d'appel API).")
-            else:
-                try:
-                    created = post_cases(payload)
-                    st.success("✅ Cas enregistré !")
-                    st.json(created)
-                except Exception as ex:
-                    st.error(f"❌ Erreur API : {ex}")
+    if st.session_state.save_success:
+        st.success("✅ Cas enregistré !")
+        if st.session_state.last_created_case is not None:
+            st.json(st.session_state.last_created_case)
+
+        if st.button("➕ Ajouter un nouveau cas", type="primary"):
+            reset_case_form()
+    else:
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("⬅️ Modifier"):
+                go(2)
+        with col2:
+            if st.button("🚨 Enregistrer"):
+                if DRY_RUN:
+                    st.session_state.save_success = True
+                    st.session_state.last_created_case = {"status": "dry_run"}
+                    st.rerun()
+                else:
+                    try:
+                        created = post_cases(payload)
+                        st.session_state.save_success = True
+                        st.session_state.last_created_case = created
+                        st.rerun()
+                    except Exception as ex:
+                        st.error(f"❌ Erreur API : {ex}")
