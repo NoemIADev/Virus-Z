@@ -12,18 +12,23 @@ app = FastAPI(title="Virus Z API")
 class ModePropagation(str, Enum):
     morsure = "Morsure"
     sang = "Sang"
-    mutation = "Mutation genetique"
-    inconnu = "Inconnu"
+    mutation = "Mutation_secondaire"
+    Griffure = "Griffure"
+    Fluides = "Fluides"
+    Aerein = "Aerien"
 
 class MoyenDetection(str, Enum):
     symptome = "Symptômes"
     test_salivaire = "Test salivaire"
-    scan = "Scan"
+    PCR = "PCR"
     observation_comportementale = "Observation comportementale"
+    Scan = "Scan"
+    Test_adn = "test adn"
 
 class ContagiositeLevel(IntEnum):
-    faible = 0
-    fort = 1
+    Non_contagieux = 0
+    faible = 1
+    Fortement_contagieux = 2
 
 class VirusCreate(BaseModel):
     nom: str

@@ -53,6 +53,10 @@ def init_state():
     # Normalise les anciennes valeurs possibles (bool/string) vers "Oui"/"Non"
     st.session_state.mise_en_quarantaine = "Oui" if is_quarantaine_enabled() else "Non"
 
+    # Normalise d'anciennes valeurs de zone ("" -> None) pour éviter des validations incohérentes
+    if st.session_state.get("zone_quarantaine") == "":
+        st.session_state.zone_quarantaine = None
+
 
 def is_quarantaine_enabled() -> bool:
     """Retourne True si la quarantaine est activée, quel que soit le format stocké."""
@@ -123,7 +127,7 @@ def on_change_quarantaine():
 def persist_step2_snapshot():
     """Snapshot non-widget de l'étape 2 pour survivre aux reruns de Streamlit."""
     st.session_state["step2_snapshot"] = {
-        "zone_quarantaine": st.session_state.get("zone_quarantaine", ""),
+        "zone_quarantaine": st.session_state.get("zone_quarantaine", None),
         "date_debut_quarantaine": st.session_state.get("date_debut_quarantaine", date.today()),
         "domicile_inconnu": bool(st.session_state.get("domicile_inconnu", False)),
         "domicile_adresse": st.session_state.get("domicile_adresse", ""),
@@ -148,7 +152,7 @@ def validate_step1():
 def validate_step2():
     errors = []
     if is_quarantaine_enabled():
-        if not st.session_state.zone_quarantaine.strip():
+        if not isinstance(st.session_state.zone_quarantaine, int):
             errors.append("La zone de quarantaine est obligatoire.")
     else:
         # domicile
@@ -202,7 +206,7 @@ def build_payload():
 
     if quarantaine_active:
         payload["quarantaine"] = {
-            "zone": clean_text(get_step2_value("zone_quarantaine", "")),
+            "zone_id": get_step2_value("zone_quarantaine", None),
             "date_debut": str(get_step2_value("date_debut_quarantaine", date.today())),
         }
     else:
@@ -261,6 +265,12 @@ init_state()
 
 # Listes dynamiques depuis la base via API
 zones_quarantaine = get_quarantine_zones()
+zones_quarantaine_by_id = {
+    int(zone["id"]): zone["nom"]
+    for zone in zones_quarantaine
+    if isinstance(zone, dict) and zone.get("id") is not None
+}
+zone_ids = list(zones_quarantaine_by_id.keys())
 virus_catalog = get_virus_catalog()
 virus_labels = [item["label"] for item in virus_catalog]
 
@@ -353,13 +363,18 @@ elif st.session_state.step == 2:
 
     if is_quarantaine_enabled():
         st.markdown("### 🏥 Zone de quarantaine")
-        if zones_quarantaine:
-            index_zone = zones_quarantaine.index(st.session_state.zone_quarantaine) if st.session_state.zone_quarantaine in zones_quarantaine else 0
-            selected_zone = st.selectbox("Zone de mise en quarantaine *", zones_quarantaine, index=index_zone)
+        if zone_ids:
+            index_zone = zone_ids.index(st.session_state.zone_quarantaine) if st.session_state.zone_quarantaine in zone_ids else 0
+            selected_zone = st.selectbox(
+                "Zone de mise en quarantaine *",
+                zone_ids,
+                index=index_zone,
+                format_func=lambda zone_id: zones_quarantaine_by_id.get(zone_id, str(zone_id)),
+            )
             st.session_state.zone_quarantaine = selected_zone
         else:
             st.warning("Aucune zone de quarantaine disponible en base.")
-            st.session_state.zone_quarantaine = ""
+            st.session_state.zone_quarantaine = None
         st.date_input("Début de la quarantaine", key="date_debut_quarantaine")
     else:
         st.markdown("### 🏠 Lieux fréquentés")

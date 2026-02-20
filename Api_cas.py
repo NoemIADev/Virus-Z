@@ -148,10 +148,9 @@ def list_quarantine_zones():
         cur = conn.cursor(dictionary=True)
         cur.execute(
             """
-            SELECT id, nom
+            SELECT id, nom, type
             FROM lieu_quarantaine
-            WHERE type = 'ZONE'
-              AND nom IS NOT NULL
+            WHERE nom IS NOT NULL
               AND nom <> ''
             ORDER BY nom
             """
@@ -273,7 +272,7 @@ def create_case(case: CaseCreate):
                 """
                 SELECT id
                 FROM lieu_quarantaine
-                WHERE id = %s AND type = 'ZONE'
+                WHERE id = %s
                 """,
                 (zone_id,),
             )

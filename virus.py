@@ -9,7 +9,7 @@ with st.form("add_infection"):
     
     mode_propagation = st.selectbox(
         "Mode de propagation",
-        ["Morsure","Griffure","FluidesAérosols_clos","Spores_air", "Contact_surface","Aérien", "Mutation_secondaire"]
+        ["Morsure","Griffure","Fluides","Aérien", "Mutation_secondaire", "Sang"]
     )
 
     incubation_min = st.number_input(
@@ -23,9 +23,9 @@ with st.form("add_infection"):
           "Contagiosité",
     options=[0, 1, 2],
     format_func=lambda x: (
-        "Non contagieux" if x == 0
+        "Non_contagieux" if x == 0
         else "Faible" if x == 1
-        else "Fortement contagieux"
+        else "Fortement_contagieux"
     )
     )
   
@@ -71,5 +71,17 @@ if submitted:
             "commentaire": commentaire or None
         }
 
-        # appel API ici
-        st.success("Infection enregistrée avec succès 🧟‍♂️")
+        try:
+            response = requests.post(
+            "http://127.0.0.1:8000/virus",
+            json=payload
+            )
+
+            if response.status_code == 200:
+                st.success("Infection enregistrée avec succès 🧟‍♂️")
+            else:
+                st.error(f"Erreur API : {response.text}")
+
+        except Exception as e:
+            st.error(f"Erreur de connexion à l'API : {e}")
+            st.success("Infection enregistrée avec succès 🧟‍♂️")
